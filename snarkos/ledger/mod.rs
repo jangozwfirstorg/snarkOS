@@ -327,7 +327,7 @@ impl<N: Network> Ledger<N> {
                                 trace!("send block request to {}, count: {}", block_url, counter);
                                 // Fetch the bytes from the given url
                                 // let block_bytes = client.get(block_url).send().await?.bytes().await?;
-                                let res = client.get(block_url).send().await;
+                                let res = client.get(&block_url).send().await;
                                 match res {
                                     Ok(res) =>{
                                         let block_bytes = res.bytes().await?;
