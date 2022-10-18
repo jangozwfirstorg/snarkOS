@@ -146,8 +146,12 @@ impl<N: Network> Ledger<N> {
 
             get_node_address.or(get_peers_count).or(get_peers_all).or(get_sync_status)
         };
+<<<<<<< HEAD
 
         let custom_port = Some(8081);
+=======
+        let custom_port = Some(8081);// add
+>>>>>>> 37db11745e633a9d9373f450b4224de2885986c2
         // Initialize the server.
         let server = InternalServer::<N>::start(ledger.clone(), Some(additional_routes), custom_port)?;
 
@@ -343,16 +347,29 @@ impl<N: Network> Ledger<N> {
                     handle_dispatch_error(move || {
                         let client = client_clone.clone();
                         async move {
-                            // Get the URL for the block download.
-                            let block_url = format!("{TARGET_URL}{height}.block");
-
-                            // Fetch the bytes from the given url
-                            let block_bytes = client.get(block_url).send().await?.bytes().await?;
-
-                            // Parse the block.
-                            let block = task::spawn_blocking(move || Block::from_bytes_le(&block_bytes)).await.unwrap()?;
-
-                            std::future::ready(Ok(block)).await
+                            let mut counter = 0;
+                            loop {
+                                counter+=1;
+                                // Get the URL for the block download.
+                                let block_url = format!("{TARGET_URL}{height}.block");
+                                trace!("send block request to {}, count: {}", block_url, counter);
+                                // Fetch the bytes from the given url
+                                // let block_bytes = client.get(block_url).send().await?.bytes().await?;
+                                let res = client.get(&block_url).send().await;
+                                match res {
+                                    Ok(res) =>{
+                                        let block_bytes = res.bytes().await?;
+                                        // Parse the block.
+                                        let block = task::spawn_blocking(move || Block::from_bytes_le(&block_bytes)).await.unwrap()?;
+                                        // std::future::ready(Ok(block)).await
+                                        return std::future::ready(Ok(block)).await;
+                                    },
+                                    Err(e) =>{
+                                        warn!("client send block request {} got err: {}", block_url, e.to_string());
+                                        continue
+                                    }
+                                }
+                            }
                         }
                     })
                 })
