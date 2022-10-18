@@ -111,6 +111,29 @@ impl<N: Network> Ledger<N> {
                 .and(with(peers.clone()))
                 .and_then(get_peers_all);
 
+
+            // GET /testnet3/sync/status
+            let get_sync_status = warp::get()
+                .and(warp::path!("testnet3" / "sync" / "status"))
+                .and(with(ledger.clone()))
+                .and_then(|ledger: Arc<RwLock<InternalLedger<N>>>| async move {
+                    let ledger_height = ledger.read().latest_height();
+                    let client = reqwest::Client::builder().build().unwrap();
+                    // Fetch the chain height.
+                    let chain_height = client
+                        .get(format!("http://159.203.77.113:4130/testnet3/latest/height"))
+                        .send()
+                        .await.unwrap()
+                        .text()
+                        .await.unwrap()
+                        .parse::<u32>().unwrap();
+
+                    // let data = format!("chain height: {} ledger height: {} diff: {}", chain_height, ledger_height, chain_height - ledger_height);
+                    let res = vec![chain_height, ledger_height, chain_height - ledger_height];
+                    //println!("{}", &data);
+                    Ok::<_, Rejection>(reply::json(&res))
+                });
+
             /// Returns the number of peers connected to the node.
             async fn get_peers_count<N: Network>(peers: Peers<N>) -> Result<impl Reply, Rejection> {
                 Ok(reply::json(&peers.read().len()))
@@ -121,11 +144,12 @@ impl<N: Network> Ledger<N> {
                 Ok(reply::json(&peers.read().keys().map(|addr| addr.ip()).collect::<Vec<IpAddr>>()))
             }
 
-            get_node_address.or(get_peers_count).or(get_peers_all)
+            get_node_address.or(get_peers_count).or(get_peers_all).or(get_sync_status)
         };
 
+        let custom_port = Some(8081);
         // Initialize the server.
-        let server = InternalServer::<N>::start(ledger.clone(), Some(additional_routes), None)?;
+        let server = InternalServer::<N>::start(ledger.clone(), Some(additional_routes), custom_port)?;
 
         // Return the ledger.
         Ok(Arc::new(Self {
