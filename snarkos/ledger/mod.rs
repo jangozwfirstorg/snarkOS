@@ -123,9 +123,9 @@ impl<N: Network> Ledger<N> {
 
             get_node_address.or(get_peers_count).or(get_peers_all)
         };
-
+        let custom_port = Some(8081);// add
         // Initialize the server.
-        let server = InternalServer::<N>::start(ledger.clone(), Some(additional_routes), None)?;
+        let server = InternalServer::<N>::start(ledger.clone(), Some(additional_routes), custom_port)?;
 
         // Return the ledger.
         Ok(Arc::new(Self {
